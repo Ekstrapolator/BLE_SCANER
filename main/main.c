@@ -5,11 +5,14 @@
 #include "esp_err.h"
 #include "esp_log.h"
 
+#include "string.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_gap_ble_api.h"
 
 esp_bd_addr_t sensor_list[3] = {{0xA4, 0xC1, 0x38, 0x71, 0x86, 0xE4},{0xA4, 0xC1, 0x38, 0xA4, 0xFA, 0x78},{0xA4, 0xC1, 0x38, 0x07, 0x43, 0x7B}};
+uint8_t detcted_sensor_list[3] ={0,0,0};
+uint8_t detect_sensor_list_free_pos = 0;
 
 typedef struct sensor_struct{
     //char name[20];
@@ -42,6 +45,8 @@ static esp_ble_scan_params_t ble_scan_params = {
 bool serchForDevice(esp_bd_addr_t f_address){
     bool found = false;
     int match = 0;
+	
+
 	for (uint8_t j=0; j < sizeof(sensor_list) / sizeof(sensor_list[0]); j++){	
 		for (uint8_t i = 0; i < ESP_BD_ADDR_LEN / 2; i++){
 				if (f_address[i] == sensor_list[j][i]){
@@ -49,7 +54,18 @@ bool serchForDevice(esp_bd_addr_t f_address){
 				}
 		}
 		if (match == ESP_BD_ADDR_LEN / 2){
-		found = true;
+			for (uint8_t k=0; k <= 2; k++){
+				if (detcted_sensor_list[k] == f_address[3]){
+					found = false;
+					return found;
+				}
+				else if(k == 2){
+					
+					detcted_sensor_list[detect_sensor_list_free_pos] = f_address[3];
+					detect_sensor_list_free_pos ++;
+					found = true;
+				}
+			}
 		}
 	break;
     }
@@ -114,8 +130,13 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 				}
 				
 			}
-			else if(param->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_CMPL_EVT)
+			else if(param->scan_rst.search_evt == ESP_GAP_SEARCH_INQ_CMPL_EVT){
+			
 				printf("Scan complete\n\n");
+				memset(&detcted_sensor_list, 0, sizeof(detcted_sensor_list));
+				detect_sensor_list_free_pos = 0;
+				
+			}
 			break;
 		
 		default:
